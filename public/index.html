@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MPG Takeover Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Italiana&family=Josefin+Sans:wght@300;400&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: calm and exact, with the restraint of the MPG brochure; an office board the team trusts.
+   IDEA: the agency key register: every takeover is a file card with a key tag counting down to collection.
+   PICTURE: a five week key collection strip with tags pinned to their dates, then the live takeover cards.
+   COLOUR and TYPE: MPG cream ground, charcoal ink, deep teal accent; Italiana for wordmark and titles, Poppins for the work.
+   LAYOUT: brand header, figures, key strip, filterable cards; detail and forms open in dialogs; stacks under 600px. */
+:root{color-scheme:light dark;
+--bg:light-dark(#F6F1EB,#1B1919);--paper:light-dark(#FFFFFF,#252222);--ink:light-dark(#2B2727,#F1EBE3);--mute:light-dark(#6B6360,#A89F99);
+--line:light-dark(#E4DBD0,#3A3532);--line2:light-dark(#CFC4B7,#4D4643);
+--teal:light-dark(#265B60,#72B3B7);--on-teal:light-dark(#FFFFFF,#0E2426);--teal-soft:light-dark(#E2ECEB,#1E3335);
+--amber:light-dark(#8F5B0E,#E3B256);--on-amber:light-dark(#FFFFFF,#2A1D05);--amber-soft:light-dark(#F7EAD3,#3A2F1B);
+--red:light-dark(#A3342B,#EF8D82);--on-red:light-dark(#FFFFFF,#2B0F0C);--red-soft:light-dark(#F6DFDB,#3F2421)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Poppins,system-ui,sans-serif;overflow-x:clip}
+.wrap{max-width:1180px;margin:0 auto;padding:0 max(4vw,16px)}
+.top{padding:22px 0 0}
+.toprow{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.mark{display:inline-grid;justify-items:end;line-height:1;color:var(--ink)}
+.m1{font:400 42px/1 Italiana,Georgia,serif;letter-spacing:.01em}
+.m2{font:300 16px/1.1 'Josefin Sans',Poppins,sans-serif;color:var(--teal);margin:3px 4px 0 0}
+.rule{height:2px;background:var(--teal);width:min(240px,45%);margin-top:16px}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.me{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mute)}
+.rochip{font-size:13px;color:var(--mute);border:1px solid var(--line2);border-radius:14px;padding:4px 12px}
+.btn{font:500 15px/1 Poppins,sans-serif;min-height:44px;padding:0 18px;border-radius:6px;border:1px solid var(--teal);background:var(--teal);color:var(--on-teal);cursor:pointer;white-space:nowrap}
+.btn.ghost{background:transparent;color:var(--teal)}
+.btn.danger{background:transparent;color:var(--red);border-color:var(--red)}
+.btn.danger.arm{background:var(--red);color:var(--on-red)}
+.btn:disabled{opacity:.6;cursor:default}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+input,select{font:16px Poppins,sans-serif;min-height:44px;padding:8px 12px;border:1px solid var(--line2);border-radius:6px;background:var(--paper);color:var(--ink);width:100%}
+.me select{width:auto;min-width:140px}
+.hero{padding:30px 0 6px;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:22px 44px;align-items:end}
+h1{font:400 clamp(34px,5vw,50px)/1.05 Italiana,Georgia,serif;margin:0;text-wrap:balance}
+.lede{margin:10px 0 0;color:var(--mute);max-width:60ch}
+.lede b{color:var(--ink);font-weight:500}
+.figs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--line2)}
+.fig1{padding:12px 10px 2px 0}
+.fig1+.fig1{padding-left:14px;border-left:1px solid var(--line)}
+.fig1 b{display:block;font:600 32px/1.15 Poppins,sans-serif;font-variant-numeric:tabular-nums}
+.fig1 span{font-size:13px;color:var(--mute);line-height:1.3;display:block}
+.fig1.warn b{color:var(--amber)}.fig1.bad b{color:var(--red)}
+.note{background:var(--amber-soft);color:var(--amber);padding:10px 14px;border-radius:6px;font-size:14px;margin-top:16px}
+.note:empty{display:none}
+.strip{margin-top:24px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:18px 20px 14px}
+.strip .hd{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline;margin-bottom:12px}
+.strip h2{font:500 16px/1.3 Poppins,sans-serif;margin:0}
+.strip .hd span,.later{font-size:13px;color:var(--mute)}
+.later{margin:8px 0 0}
+.over{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
+.olab{font-size:13px;color:var(--red);font-weight:500}
+.lane-box{overflow-x:auto}
+.lanes{position:relative;min-width:760px}
+.base{position:absolute;left:0;right:0;bottom:26px;border-top:1px solid var(--line2)}
+.wk,.today{position:absolute;top:0;bottom:0;border-left:1px dashed var(--line2)}
+.today{border-left:2px solid var(--teal)}
+.wk span,.today span{position:absolute;bottom:3px;left:6px;font-size:13px;color:var(--mute);white-space:nowrap}
+.today span{color:var(--teal);font-weight:500}
+.none{position:absolute;left:16px;top:8px;margin:0;color:var(--mute);font-size:14px}
+.tag{position:absolute;height:30px;display:flex;align-items:center;gap:6px;padding:0 12px 0 24px;border-radius:4px 15px 15px 4px;background:var(--teal);color:var(--on-teal);font:500 13px/1 Poppins,sans-serif;border:0;cursor:pointer;white-space:nowrap;max-width:200px;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.tag::before{content:"";position:absolute;left:9px;top:50%;width:7px;height:7px;margin-top:-3.5px;border-radius:50%;background:var(--paper)}
+.tag.flip{border-radius:15px 4px 4px 15px;padding:0 24px 0 12px}
+.tag.flip::before{left:auto;right:9px}
+.tag .t{overflow:hidden;text-overflow:ellipsis}
+.tag b{font-weight:600}
+.tag.soon{background:var(--amber);color:var(--on-amber)}
+.tag.red{background:var(--red);color:var(--on-red)}
+.tag.static{position:relative}
+.listhd{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin:30px 0 14px}
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filters button{font:500 14px Poppins,sans-serif;min-height:40px;padding:0 14px;border-radius:20px;border:1px solid var(--line2);background:transparent;color:var(--ink);cursor:pointer}
+.filters i{font-style:normal;color:var(--mute);margin-left:4px}
+.filters button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.filters button[aria-pressed=true] i{color:var(--bg);opacity:.75}
+.search{width:min(300px,100%)}
+.cards{display:grid;gap:12px;padding-bottom:36px}
+.card{display:grid;grid-template-columns:minmax(0,1fr) 180px;gap:14px 28px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:18px 20px;cursor:pointer;transition:border-color .15s}
+.card:hover{border-color:var(--line2)}
+.addr{font:500 19px/1.3 Poppins,sans-serif}
+.sub{color:var(--mute);font-size:14px}
+.meta{display:flex;flex-wrap:wrap;gap:6px 28px;margin:10px 0 0}
+.meta div{display:grid}
+.meta dt{font-size:13px;color:var(--mute)}.meta dd{margin:0;font-size:15px}
+.cnt{display:grid;align-content:start;justify-items:end;text-align:right;padding:10px 14px;border-radius:6px;background:var(--teal-soft);color:var(--teal)}
+.cnt b{font:600 30px/1.1 Poppins,sans-serif;font-variant-numeric:tabular-nums}
+.cnt span{font-size:13px;line-height:1.35}
+.st-soon .cnt{background:var(--amber-soft);color:var(--amber)}
+.st-overdue .cnt{background:var(--red-soft);color:var(--red)}
+.st-complete .cnt{background:transparent;color:var(--mute);border:1px solid var(--line)}
+.track{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.track span{font-size:13px;padding:3px 10px;border-radius:12px;border:1px solid var(--line2);color:var(--mute)}
+.track span.on{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
+.track em{font-style:normal;font-size:13px;color:var(--mute);margin-left:auto}
+.empty{padding:40px 20px;text-align:center;border:1px dashed var(--line2);border-radius:8px;color:var(--mute)}
+.empty p{margin:0 0 14px}
+.foot{padding:18px 0 40px;color:var(--mute);font-size:13px;border-top:1px solid var(--line);display:flex;gap:8px 20px;flex-wrap:wrap;align-items:center;justify-content:space-between}.foot .linkbtn{font-size:13px}
+dialog{border:0;border-radius:10px;padding:0;width:min(780px,calc(100vw - 20px));max-height:calc(100vh - 24px);overflow:auto;background:var(--paper);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.28)}
+dialog.sm{width:min(440px,calc(100vw - 20px))}
+dialog::backdrop{background:rgba(27,25,25,.5)}
+.dh{position:sticky;top:0;z-index:2;background:var(--paper);display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:20px 22px 14px;border-bottom:1px solid var(--line)}
+.dh h2{font:400 30px/1.1 Italiana,Georgia,serif;margin:0}
+.dh p{margin:4px 0 0;color:var(--mute);font-size:14px}
+.xbtn{min-width:44px;min-height:44px;padding:0 12px;border:1px solid var(--line2);border-radius:6px;background:transparent;color:var(--ink);font:500 14px Poppins,sans-serif;cursor:pointer}
+.db{padding:18px 22px 20px}
+.db h3{font:600 15px Poppins,sans-serif;margin:0 0 10px;display:flex;justify-content:space-between;gap:10px}
+.db h3 span{font-weight:400;color:var(--mute)}
+.dcount{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.dcount .cnt{justify-items:start;text-align:left}
+.dcount p{margin:0;color:var(--mute);font-size:14px}
+.check{list-style:none;margin:0 0 22px;padding:0;border:1px solid var(--line);border-radius:8px}
+.check li+li{border-top:1px solid var(--line)}
+.check label{display:grid;grid-template-columns:28px minmax(0,1fr);gap:14px;align-items:start;padding:12px 14px;cursor:pointer;min-height:56px}
+.check b{font-weight:500;display:block;line-height:1.4}
+.check small{font-size:13px;color:var(--mute)}
+.check li.on small{color:var(--teal)}
+input[type=checkbox]{appearance:none;width:26px;height:26px;min-height:0;padding:0;margin:0;border:2px solid var(--teal);border-radius:5px;background:var(--paper);display:grid;place-content:center;cursor:pointer}
+input[type=checkbox]::before{content:"";width:12px;height:7px;border-left:3px solid var(--on-teal);border-bottom:3px solid var(--on-teal);transform:rotate(-45deg) scale(0);margin-top:-3px;transition:transform .15s}
+input[type=checkbox]:checked{background:var(--teal)}
+input[type=checkbox]:checked::before{transform:rotate(-45deg) scale(1)}
+input[type=checkbox]:disabled{cursor:default;opacity:.7}
+.dgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px 28px}
+.kv{margin:0 0 8px;display:grid;gap:5px}
+.kv div{display:grid;grid-template-columns:8.5em minmax(0,1fr);gap:8px;font-size:15px}
+.kv dt{color:var(--mute);font-size:14px}
+.kv dd{margin:0;overflow-wrap:anywhere}
+.own+.own{border-top:1px solid var(--line);padding-top:8px}
+.mute{color:var(--mute);font-size:14px;margin:0}
+.df{position:sticky;bottom:0;background:var(--paper);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:14px 22px;border-top:1px solid var(--line)}
+fieldset{border:0;padding:0;margin:0 0 22px}
+legend{font:600 15px Poppins,sans-serif;margin-bottom:10px;padding:0}
+.fg{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.fg label{display:grid;gap:4px;grid-column:span 3}
+.fg .w6{grid-column:1/-1}.fg .w2{grid-column:span 2}.fg .w4{grid-column:span 4}
+label>span{font-size:13px;color:var(--mute)}
+.orow{display:grid;grid-template-columns:1.3fr 1fr 1.3fr auto;gap:10px;align-items:end;padding:0 0 12px}
+.orow label{display:grid;gap:4px}
+.x{min-height:44px;border:0;background:transparent;color:var(--red);font:500 14px Poppins,sans-serif;cursor:pointer;padding:0 6px}
+.orow:only-child .x{visibility:hidden}
+.hint{font-size:13px;color:var(--mute);grid-column:1/-1;display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:-4px 0 0}
+.linkbtn{border:0;background:none;color:var(--teal);font:500 14px Poppins,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:36px;padding:0}
+.ferr{color:var(--red);font-size:14px;min-height:1.2em;margin:0}
+#teamList{list-style:none;margin:0 0 12px;padding:0}
+#teamList li{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);min-height:48px}
+.addrow{display:flex;gap:8px}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:6px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:calc(100vw - 32px);z-index:10}
+#toast.show{opacity:1}
+[hidden]{display:none!important}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(max-width:780px){.hero{grid-template-columns:1fr}}
+@media(max-width:600px){
+.m1{font-size:34px}.card{grid-template-columns:1fr;padding:16px}
+.cnt{justify-items:start;text-align:left;grid-auto-flow:column;justify-content:start;align-items:baseline;gap:10px}
+.figs{grid-template-columns:repeat(2,minmax(0,1fr))}.fig1:nth-child(3){border-left:0;padding-left:0}
+.track em{margin-left:0;width:100%}.dgrid{grid-template-columns:1fr}
+.fg label,.fg .w2,.fg .w4{grid-column:1/-1}.orow{grid-template-columns:1fr;border-bottom:1px solid var(--line);margin-bottom:12px}.orow .x{justify-self:start}
+.me{width:100%}.me select{flex:1}.search{width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="toprow">
+    <div class="mark" role="img" aria-label="Musca Property Group"><span class="m1">MUSCA.</span><span class="m2">Property Group</span></div>
+    <div class="actions">
+      <label class="me">You are <select id="meSel" aria-label="Your name"></select></label>
+      <span class="rochip" id="roChip" hidden>View only</span>
+      <button class="btn ghost" id="btnTeam" type="button">Team</button>
+      <button class="btn" id="btnNew" type="button">New takeover</button>
+    </div>
+  </div>
+  <div class="rule"></div>
+</header>
+
+<section class="hero">
+  <div><h1>Management takeovers</h1><p class="lede" id="lede">Loading takeovers...</p></div>
+  <div class="figs" id="figs"></div>
+</section>
+<div class="note" id="note" role="status"></div>
+
+<section class="strip" aria-labelledby="stripH">
+  <div class="hd"><h2 id="stripH">Key collections, next 5 weeks</h2><span>Tap a tag to open the takeover</span></div>
+  <div id="strip"></div>
+</section>
+
+<section>
+  <div class="listhd">
+    <div class="filters" role="group" aria-label="Filter takeovers">
+      <button type="button" data-f="active">Active<i>0</i></button>
+      <button type="button" data-f="soon">Keys in 7 days<i>0</i></button>
+      <button type="button" data-f="overdue">Past handover<i>0</i></button>
+      <button type="button" data-f="complete">Completed<i>0</i></button>
+      <button type="button" data-f="all">All<i>0</i></button>
+    </div>
+    <input class="search" id="q" type="search" placeholder="Search address, owner, agency" aria-label="Search takeovers">
+  </div>
+  <div class="cards" id="cards"></div>
+</section>
+<footer class="foot" id="foot"><span>Reminder emails go to Brenden, Brittney and Brian each morning when a key collection is 7 days away and again 1 day before.</span> <button type="button" class="linkbtn" id="lockBtn">Lock this device</button></footer>
+</div>
+
+<dialog id="dDetail" aria-labelledby="dTitle">
+  <div class="dh"><div><h2 id="dTitle"></h2><p id="dSub"></p></div><button type="button" class="xbtn" data-close>Close</button></div>
+  <div class="db" id="detailBody"></div>
+  <div class="df" id="dFoot"><button type="button" class="btn danger" id="dDel">Delete takeover</button><button type="button" class="btn ghost" id="dEdit">Edit details</button></div>
+</dialog>
+
+<dialog id="dForm" aria-labelledby="fTitle">
+<form id="f" novalidate>
+  <div class="dh"><div><h2 id="fTitle">New takeover</h2><p>Fields marked * are required.</p></div><button type="button" class="xbtn" data-close>Close</button></div>
+  <div class="db">
+    <fieldset><legend>Property</legend><div class="fg">
+      <label class="w6"><span>Street address *</span><input name="street" autocomplete="off"></label>
+      <label class="w4"><span>Suburb</span><input name="suburb" autocomplete="off"></label>
+      <label class="w2"><span>Postcode</span><input name="postcode" inputmode="numeric" maxlength="4" autocomplete="off"></label>
+    </div></fieldset>
+    <fieldset><legend>Owners</legend><div id="owners"></div><button type="button" class="linkbtn" id="addOwner">Add a co-owner</button></fieldset>
+    <fieldset><legend>Outgoing agency</legend><div class="fg">
+      <label><span>Agency name</span><input name="aname" autocomplete="off"></label>
+      <label><span>Property manager</span><input name="acontact" autocomplete="off"></label>
+      <label><span>Phone</span><input name="aphone" type="tel" autocomplete="off"></label>
+      <label><span>Email</span><input name="aemail" type="email" autocomplete="off"></label>
+    </div></fieldset>
+    <fieldset><legend>Handover</legend><div class="fg">
+      <label><span>Assigned to</span><select name="assignee"></select></label>
+      <label><span>Termination notice sent</span><input name="noticeDate" type="date"></label>
+      <label class="w2"><span>Notice period (days)</span><input name="noticeDays" type="number" min="1" max="180" inputmode="numeric"></label>
+      <label class="w4"><span>Handover and key collection date</span><input name="handoverDate" type="date"></label>
+      <p class="hint"><span id="hoNote"></span><button type="button" class="linkbtn" id="useAuto" hidden>Use the worked-out date</button></p>
+      <label class="w6"><span>Key collection time and place</span><input name="keyNote" autocomplete="off" placeholder="For example: 10am at their office"></label>
+    </div></fieldset>
+    <p class="ferr" id="ferr" role="alert"></p>
+  </div>
+  <div class="df"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn" id="fSave">Save takeover</button></div>
+</form>
+</dialog>
+
+<dialog id="dTeam" class="sm" aria-labelledby="tTitle">
+<form id="tf">
+  <div class="dh"><div><h2 id="tTitle">Team</h2><p>Names for assigning takeovers and signing off steps.</p></div><button type="button" class="xbtn" data-close>Close</button></div>
+  <div class="db"><ul id="teamList"></ul><div class="addrow"><input id="tNew" placeholder="Add a name" aria-label="New team member name" autocomplete="off"><button type="button" class="btn ghost" id="tAdd">Add</button></div></div>
+  <div class="df"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn">Save team</button></div>
+</form>
+</dialog>
+
+<dialog id="dMe" class="sm" aria-labelledby="mTitle">
+<form id="mf">
+  <div class="dh"><div><h2 id="mTitle">Who is ticking?</h2><p>Pick your name so each step shows who signed it off. Remembered on this device.</p></div></div>
+  <div class="db"><select id="meDlgSel" aria-label="Your name"></select></div>
+  <div class="df"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn">Continue</button></div>
+</form>
+</dialog>
+<dialog id="dCode" class="sm" aria-labelledby="cTitle">
+<form id="cf">
+  <div class="dh"><div><h2 id="cTitle">Team access</h2><p>Enter the MPG team code to open the takeover board. It is remembered on this device.</p></div></div>
+  <div class="db"><input id="codeIn" type="password" autocomplete="current-password" aria-label="Team code" placeholder="Team code"><p class="ferr" id="cerr" role="alert"></p></div>
+  <div class="df"><span></span><button class="btn" id="cBtn">Open board</button></div>
+</form>
+</dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+{
+const STEPS=[
+  {k:'form6',s:'Form 6',t:'Form 6 signed by the landlords'},
+  {k:'termination',s:'Termination',t:'Termination email sent to the outgoing agent from PropertyMe'},
+  {k:'ownerLetter',s:'Owner letter',t:'Change of management letter sent to the owner, with the handover date for files and keys'},
+  {k:'form6Copy',s:'Form 6 copy',t:'Copy of the signed Form 6 sent to the owner'},
+  {k:'portal',s:'Portal',t:'Owner set up in PropertyMe and portal access sent'},
+  {k:'keys',s:'Keys and files',t:'Keys and files received from the outgoing agent'}
+];
+const SPAN=35,LANE=38;
+const $=s=>document.querySelector(s);
+const str=v=>typeof v==='string'?v:(v==null?'':String(v));
+const esc=v=>str(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
+const isDate=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s);
+const utc=s=>{const p=s.split('-').map(Number);return Date.UTC(p[0],p[1]-1,p[2])};
+const addDays=(s,n)=>{const t=new Date(utc(s)+n*864e5);return t.getUTCFullYear()+'-'+pad(t.getUTCMonth()+1)+'-'+pad(t.getUTCDate())};
+const daysTo=s=>isDate(s)?Math.round((utc(s)-utc(today()))/864e5):null;
+const fmt=(s,o)=>{if(!isDate(s))return '';const p=s.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]).toLocaleDateString('en-AU',o||{weekday:'short',day:'numeric',month:'short'})};
+const stamp=t=>{if(!t)return '';const d=new Date(t);return isNaN(d)?'':d.toLocaleDateString('en-AU',{day:'numeric',month:'short'})+', '+d.toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})};
+const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
+
+function norm(id,d){
+  const o=obj(d),a=obj(o.agency),st=obj(o.steps),rm=obj(o.reminders),nd=parseInt(o.noticeDays,10);
+  return {id,street:str(o.street),suburb:str(o.suburb),postcode:str(o.postcode),
+    owners:Array.isArray(o.owners)?o.owners.map(obj).map(x=>({name:str(x.name),phone:str(x.phone),email:str(x.email)})):[],
+    agency:{name:str(a.name),contact:str(a.contact),phone:str(a.phone),email:str(a.email)},
+    assignee:str(o.assignee),noticeDate:isDate(o.noticeDate)?o.noticeDate:'',noticeDays:nd>0?nd:30,
+    handoverDate:isDate(o.handoverDate)?o.handoverDate:'',handoverManual:!!o.handoverManual,keyNote:str(o.keyNote),
+    steps:Object.fromEntries(STEPS.map(s=>{const v=obj(st[s.k]);return [s.k,{done:!!v.done,by:str(v.by),at:str(v.at)}]})),
+    reminders:{d7:isDate(rm.d7)?rm.d7:'',d1:isDate(rm.d1)?rm.d1:'',for:isDate(rm.for)?rm.for:''},
+    createdAt:str(o.createdAt),completedAt:str(o.completedAt)};
+}
+
+let canWrite=true,raw={},rows=[],team=[],filter='active',q='',openId=null,editId=null,manual=false,state='loading',pending=null,draftTeam=[],busy=0,polling=null;
+let code='';try{code=localStorage.getItem('mpg-code')||''}catch(e){}
+const clone=o=>JSON.parse(JSON.stringify(o));
+function deepMerge(a,b){for(const k of Object.keys(b)){const v=b[k];if(v&&typeof v==='object'&&!Array.isArray(v)&&a[k]&&typeof a[k]==='object'&&!Array.isArray(a[k]))deepMerge(a[k],v);else a[k]=v}return a}
+function rebuild(){rows=Object.keys(raw).map(id=>norm(id,raw[id]))}
+async function api(method,path,body){
+  let r;
+  try{r=await fetch('/api/'+path,{method,cache:'no-store',headers:{'content-type':'application/json','x-team-code':code},body:body===undefined?undefined:JSON.stringify(body)})}
+  catch(e){throw {code:'network'}}
+  if(r.status===401){askCode('That code is not right, or it has changed. Enter the current team code.');throw {code:'unauth'}}
+  if(!(r.headers.get('content-type')||'').includes('application/json'))throw {code:'nofn',status:r.status};
+  const d=await r.json();
+  if(!r.ok)throw {code:'http',status:r.status,message:d&&d.error};
+  return d;
+}
+let me='';try{me=localStorage.getItem('mpg-me')||''}catch(e){}
+
+const ownerNames=r=>r.owners.map(o=>o.name).filter(Boolean).join(' & ');
+const nDone=r=>STEPS.filter(s=>r.steps[s.k].done).length;
+function status(r){if(nDone(r)===6)return 'complete';const d=daysTo(r.handoverDate);if(d===null)return 'active';if(d<0)return 'overdue';if(d<=7)return 'soon';return 'active'}
+const byDate=(a,b)=>{const x=a.handoverDate||'9999',y=b.handoverDate||'9999';return x<y?-1:x>y?1:0};
+function countdown(r){
+  if(status(r)==='complete')return {big:'Done',small:'All 6 steps complete'};
+  const d=daysTo(r.handoverDate);
+  if(d===null)return {big:'No date',small:'Handover date not set'};
+  if(d<0)return {big:String(-d),small:(d===-1?'day':'days')+' past handover, '+fmt(r.handoverDate)};
+  if(d===0)return {big:'Today',small:'Key collection today'};
+  return {big:String(d),small:(d===1?'day':'days')+' to key collection, '+fmt(r.handoverDate)};
+}
+function remLine(r){
+  if(r.steps.keys.done)return 'Not needed, keys received';
+  if(!r.handoverDate)return 'Set a handover date to schedule them';
+  const ok=r.reminders.for===r.handoverDate,s7=ok&&r.reminders.d7,s1=ok&&r.reminders.d1;
+  return '7 day: '+(s7?'sent '+fmt(s7,{day:'numeric',month:'short'}):'due '+fmt(addDays(r.handoverDate,-7),{day:'numeric',month:'short'}))+'. 1 day: '+(s1?'sent '+fmt(s1,{day:'numeric',month:'short'}):'due '+fmt(addDays(r.handoverDate,-1),{day:'numeric',month:'short'}))+'.';
+}
+
+const toastEl=$('#toast');let tt;
+function toast(m){toastEl.textContent=m;toastEl.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove('show'),3400)}
+function note(m){$('#note').textContent=m}
+function errText(e){const c=e&&e.code;
+  if(c==='network')return 'No connection. That change was not saved.';
+  if(c==='nofn')return 'The board database is not switched on for this site yet.';
+  if(c==='http'&&e.message)return 'Not saved: '+e.message+'.';
+  return 'Could not save. Check your connection and try again.'}
+let chain=Promise.resolve();
+function write(fn){busy++;chain=chain.then(fn).then(()=>{busy--},e=>{busy--;if(!e||e.code!=='unauth')toast(errText(e));load()});return chain}
+async function patchTakeover(id,patch){
+  if(!raw[id])return;
+  raw[id]=deepMerge(clone(raw[id]),clone(patch));rebuild();render();
+  return write(async()=>{const t=await api('PATCH','takeovers/'+encodeURIComponent(id),patch);raw[t.id]=t;rebuild();render()});
+}
+function applyState(s){raw={};(Array.isArray(s.takeovers)?s.takeovers:[]).forEach(t=>{if(t&&typeof t.id==='string')raw[t.id]=t});rebuild();
+  team=Array.isArray(s.team)?[...new Set(s.team.map(str).map(x=>x.trim()).filter(Boolean))]:[];renderTeam()}
+async function load(){
+  if(!code){askCode();return}
+  if(busy)return;
+  try{const s=await api('GET','state');if(busy)return;applyState(s);state='ready';note('');render()}
+  catch(e){
+    if(e.code==='unauth')return;
+    if(e.code==='nofn'){state='nodb';note('');render();return}
+    note("Can't reach the board right now. It will keep retrying.");
+    if(state==='loading'){state='ready';render()}
+  }
+}
+function startPolling(){load();clearInterval(polling);polling=setInterval(()=>{if(document.visibilityState==='visible')load()},8000)}
+function askCode(msg){const d=$('#dCode');$('#cerr').textContent=msg||'';$('#codeIn').value='';if(!d.open)d.showModal();$('#codeIn').focus()}
+
+function render(){renderFigs();renderStrip();renderList();if(openId)renderDetail()}
+
+function renderFigs(){
+  const act=rows.filter(r=>status(r)!=='complete');
+  const soon=act.filter(r=>status(r)==='soon').length,over=act.filter(r=>status(r)==='overdue').length;
+  $('#figs').innerHTML=[[act.length,'Active takeovers',''],[soon,'Keys due in 7 days',soon?'warn':''],[over,'Past handover date',over?'bad':''],[rows.length-act.length,'Completed','']]
+    .map(([n,l,c])=>`<div class="fig1 ${c}"><b>${n}</b><span>${l}</span></div>`).join('');
+  const next=act.filter(r=>{const d=daysTo(r.handoverDate);return d!==null&&d>=0}).sort(byDate)[0];
+  $('#lede').innerHTML=state==='nodb'?'The board database is not switched on for this site yet.'
+    :state==='loading'&&!rows.length?'Loading takeovers...'
+    :next?`Next key collection: <b>${esc(next.street||'Property')}</b>, ${esc(fmt(next.handoverDate,{weekday:'long',day:'numeric',month:'long'}))}.`
+    :act.length?'No upcoming key collections booked.':'No takeovers in progress.';
+}
+
+function renderStrip(){
+  const t=today(),act=rows.filter(r=>status(r)!=='complete'&&r.handoverDate);
+  const over=act.filter(r=>daysTo(r.handoverDate)<0).sort(byDate);
+  const up=act.filter(r=>{const d=daysTo(r.handoverDate);return d>=0&&d<SPAN}).sort(byDate);
+  const later=act.filter(r=>daysTo(r.handoverDate)>=SPAN).length;
+  const ends=[];
+  const placed=up.map(r=>{const d=daysTo(r.handoverDate);let l=ends.findIndex(e=>e<=d);if(l<0){l=ends.length;ends.push(0)}ends[l]=d+9;return {r,d,l}});
+  const h=Math.max(1,ends.length)*LANE+42;
+  let marks='<div class="today" style="left:0"><span>Today</span></div>';
+  for(let i=1;i<SPAN;i++){const s=addDays(t,i);if(new Date(utc(s)).getUTCDay()===1)marks+=`<div class="wk" style="left:${(i/SPAN*100).toFixed(3)}%"><span>${esc(fmt(s,{day:'numeric',month:'short'}))}</span></div>`}
+  const tags=placed.map(({r,d,l})=>{
+    const cls=d<=1?'red':d<=7?'soon':'',flip=d>SPAN-9;
+    const pos=flip?`right:${((SPAN-d-.5)/SPAN*100).toFixed(3)}%`:`left:${((d+.5)/SPAN*100).toFixed(3)}%`;
+    return `<button type="button" class="tag ${cls} ${flip?'flip':''}" style="${pos};top:${8+l*LANE}px" data-open="${esc(r.id)}" title="${esc((r.street||'Property')+', '+fmt(r.handoverDate))}"><span class="t">${esc(r.street||'Property')}</span><b>${esc(d===0?'Today':fmt(r.handoverDate,{day:'numeric',month:'short'}))}</b></button>`}).join('');
+  $('#strip').innerHTML=(over.length?`<div class="over"><span class="olab">Past handover</span>${over.map(r=>{const n=-daysTo(r.handoverDate);return `<button type="button" class="tag red static" data-open="${esc(r.id)}"><span class="t">${esc(r.street||'Property')}</span><b>${n} day${n>1?'s':''} over</b></button>`}).join('')}</div>`:'')
+    +`<div class="lane-box"><div class="lanes" style="height:${h}px">${marks}<div class="base"></div>${tags}${up.length?'':'<p class="none">No key collections in the next 5 weeks.</p>'}</div></div>`
+    +(later?`<p class="later">${later} more after ${esc(fmt(addDays(t,SPAN-1),{day:'numeric',month:'short'}))}</p>`:'');
+}
+
+function card(r){
+  const st=status(r),c=countdown(r),n=nDone(r);
+  return `<article class="card st-${st}" tabindex="0" data-open="${esc(r.id)}" aria-label="${esc((r.street||'Property')+', '+n+' of 6 steps done')}">
+  <div><div class="addr">${esc(r.street||'Property')}</div><div class="sub">${esc([r.suburb,r.postcode].filter(Boolean).join(' '))}</div>
+  <dl class="meta"><div><dt>Owner${r.owners.length>1?'s':''}</dt><dd>${esc(ownerNames(r)||'Not entered')}</dd></div><div><dt>Taking over from</dt><dd>${esc(r.agency.name||'Not entered')}</dd></div><div><dt>Assigned</dt><dd>${esc(r.assignee||'Unassigned')}</dd></div></dl></div>
+  <div class="cnt"><b>${esc(c.big)}</b><span>${esc(c.small)}</span></div>
+  <div class="track">${STEPS.map(s=>`<span class="${r.steps[s.k].done?'on':''}">${esc(s.s)}</span>`).join('')}<em>${n} of 6 done</em></div></article>`;
+}
+function visible(){
+  const ql=q.trim().toLowerCase();
+  return rows.filter(r=>{const s=status(r);
+    if(filter==='active'&&s==='complete')return false;
+    if((filter==='soon'||filter==='overdue'||filter==='complete')&&s!==filter)return false;
+    return !ql||[r.street,r.suburb,r.postcode,ownerNames(r),r.agency.name,r.agency.contact,r.assignee].join(' ').toLowerCase().includes(ql)})
+  .sort((a,b)=>filter==='complete'?(b.completedAt>a.completedAt?1:b.completedAt<a.completedAt?-1:0):byDate(a,b));
+}
+function renderList(){
+  const c={active:0,soon:0,overdue:0,complete:0,all:rows.length};
+  rows.forEach(r=>{const s=status(r);if(s!=='complete')c.active++;if(s in c&&s!=='active')c[s]++});
+  document.querySelectorAll('[data-f]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.f===filter));b.querySelector('i').textContent=c[b.dataset.f]});
+  const v=visible();
+  $('#cards').innerHTML=state==='nodb'?'<div class="empty">The board database is not switched on for this site yet. Ask Brenden to check the Netlify deploy.</div>'
+    :state==='loading'&&!rows.length?'<div class="empty">Loading takeovers...</div>'
+    :v.length?v.map(card).join('')
+    :rows.length?'<div class="empty">Nothing matches this view.</div>'
+    :`<div class="empty"><p>No takeovers yet.</p>${canWrite?'<button type="button" class="btn" data-new>Add the first takeover</button>':''}</div>`;
+}
+
+const kv=(k,v)=>v?`<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`:'';
+function renderDetail(){
+  const r=rows.find(x=>x.id===openId),dlg=$('#dDetail');
+  if(!r){if(dlg.open)dlg.close();return}
+  const ae=document.activeElement,focusK=ae&&ae.dataset?ae.dataset.step:null;
+  const st=status(r),c=countdown(r),n=nDone(r);
+  $('#dTitle').textContent=r.street||'Property';
+  $('#dSub').textContent=[r.suburb,r.postcode].filter(Boolean).join(' ');
+  $('#detailBody').innerHTML=`<div class="dcount st-${st}"><div class="cnt"><b>${esc(c.big)}</b><span>${esc(c.small)}</span></div>${r.keyNote?`<p>Key collection: ${esc(r.keyNote)}</p>`:''}</div>
+  <h3>Takeover checklist <span>${n} of 6 done</span></h3>
+  <ul class="check">${STEPS.map(s=>{const v=r.steps[s.k];return `<li class="${v.done?'on':''}"><label><input type="checkbox" data-step="${s.k}" ${v.done?'checked':''} ${canWrite?'':'disabled'}><span><b>${esc(s.t)}</b><small>${v.done?esc('Done'+(v.by?' by '+v.by:'')+(stamp(v.at)?', '+stamp(v.at):'')):'Not done yet'}</small></span></label></li>`}).join('')}</ul>
+  <div class="dgrid">
+    <section><h3>Key collection</h3><dl class="kv">${kv('Handover date',r.handoverDate?fmt(r.handoverDate,{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'Not set')}${kv('Based on',r.handoverDate?(r.handoverManual?'Set manually':'Notice date plus '+r.noticeDays+' days'):'')}${kv('Notice sent',r.noticeDate?fmt(r.noticeDate,{day:'numeric',month:'short',year:'numeric'}):'Not yet')}${kv('Time and place',r.keyNote)}${kv('Reminder emails',remLine(r))}</dl></section>
+    <section><h3>Owner${r.owners.length>1?'s':''}</h3>${r.owners.length?r.owners.map(o=>`<dl class="kv own">${kv('Name',o.name)}${kv('Phone',o.phone)}${kv('Email',o.email)}</dl>`).join(''):'<p class="mute">No owner details yet.</p>'}</section>
+    <section><h3>Outgoing agency</h3>${r.agency.name||r.agency.contact||r.agency.phone||r.agency.email?`<dl class="kv">${kv('Agency',r.agency.name)}${kv('Contact',r.agency.contact)}${kv('Phone',r.agency.phone)}${kv('Email',r.agency.email)}</dl>`:'<p class="mute">No agency details yet.</p>'}</section>
+    <section><h3>Assigned</h3><dl class="kv">${kv('Team member',r.assignee||'Unassigned')}${kv('Added',stamp(r.createdAt))}</dl></section>
+  </div>`;
+  $('#dFoot').hidden=!canWrite;
+  if(focusK){const el=document.querySelector('#detailBody [data-step="'+focusK+'"]');if(el)el.focus()}
+}
+function openDetail(id){openId=id;renderDetail();const d=$('#dDetail');if(!d.open&&rows.some(r=>r.id===id))d.showModal()}
+
+function toggleStep(id,k,checked){
+  const r=rows.find(x=>x.id===id);if(!r)return;
+  if(!me){pending={id,k,checked};openMe();return}
+  const now=new Date().toISOString(),steps={};
+  steps[k]=checked?{done:true,by:me,at:now}:{done:false,by:'',at:''};
+  const patch={steps,updatedAt:now};
+  if(k==='termination'&&checked&&!r.noticeDate){patch.noticeDate=today();if(!r.handoverManual){patch.handoverDate=addDays(patch.noticeDate,r.noticeDays);patch.reminders={d7:'',d1:'',for:''}}toast('Notice date set to today. Handover worked out automatically.')}
+  const all=STEPS.every(s=>s.k===k?checked:r.steps[s.k].done);
+  patch.completedAt=all?now:'';
+  patchTakeover(id,patch);
+}
+
+function teamOpts(sel,val,ph){
+  const names=team.slice();if(val&&!names.includes(val))names.unshift(val);
+  sel.innerHTML=`<option value="">${esc(ph)}</option>`+names.map(n=>`<option value="${esc(n)}"${n===val?' selected':''}>${esc(n)}</option>`).join('');
+}
+function renderTeam(){teamOpts($('#meSel'),me,team.length?'Choose':'Add names in Team');if(openId)renderDetail()}
+function setMe(v){me=v;try{localStorage.setItem('mpg-me',v)}catch(e){}renderTeam()}
+function openMe(){teamOpts($('#meDlgSel'),me,team.length?'Choose your name':'Add names in Team first');$('#dMe').showModal()}
+function drawTeam(){$('#teamList').innerHTML=draftTeam.length?draftTeam.map((n,i)=>`<li><span>${esc(n)}</span><button type="button" class="x" data-rm-team="${i}">Remove</button></li>`).join(''):'<li class="mute">No names yet.</li>'}
+
+function ownerRow(o){o=o||{};return `<div class="orow"><label><span>Owner name</span><input data-o="name" value="${esc(o.name)}" autocomplete="off"></label><label><span>Phone</span><input data-o="phone" type="tel" value="${esc(o.phone)}" autocomplete="off"></label><label><span>Email</span><input data-o="email" type="email" value="${esc(o.email)}" autocomplete="off"></label><button type="button" class="x" data-rm-owner>Remove</button></div>`}
+const F=()=>$('#f').elements;
+function syncManual(){$('#hoNote').textContent=manual?'Date set manually.':'Worked out from the notice date plus the notice period.';$('#useAuto').hidden=!manual}
+function autoHandover(){if(manual)return;const f=F(),n=parseInt(f.noticeDays.value,10)||30;f.handoverDate.value=f.noticeDate.value?addDays(f.noticeDate.value,n):''}
+function openForm(r){
+  editId=r?r.id:null;const f=F();$('#f').reset();$('#ferr').textContent='';
+  $('#fTitle').textContent=r?'Edit takeover':'New takeover';
+  f.street.value=r?r.street:'';f.suburb.value=r?r.suburb:'';f.postcode.value=r?r.postcode:'';
+  $('#owners').innerHTML=(r&&r.owners.length?r.owners:[{}]).map(ownerRow).join('');
+  f.aname.value=r?r.agency.name:'';f.acontact.value=r?r.agency.contact:'';f.aphone.value=r?r.agency.phone:'';f.aemail.value=r?r.agency.email:'';
+  teamOpts(f.assignee,r?r.assignee:me,'Unassigned');
+  f.noticeDate.value=r?r.noticeDate:'';f.noticeDays.value=r?r.noticeDays:30;f.handoverDate.value=r?r.handoverDate:'';
+  manual=!!(r&&r.handoverManual);f.keyNote.value=r?r.keyNote:'';syncManual();
+  $('#dForm').showModal();f.street.focus();
+}
+
+$('#f').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const f=F(),err=$('#ferr');
+  const owners=[...document.querySelectorAll('#owners .orow')].map(row=>({name:row.querySelector('[data-o=name]').value.trim(),phone:row.querySelector('[data-o=phone]').value.trim(),email:row.querySelector('[data-o=email]').value.trim()})).filter(o=>o.name||o.phone||o.email);
+  if(!f.street.value.trim()){err.textContent='Add the property street address.';f.street.focus();return}
+  if(!owners.length||!owners[0].name){err.textContent='Add at least one owner name.';const i=document.querySelector('#owners [data-o=name]');if(i)i.focus();return}
+  const nd=parseInt(f.noticeDays.value,10),now=new Date().toISOString();
+  const data={street:f.street.value.trim(),suburb:f.suburb.value.trim(),postcode:f.postcode.value.trim(),owners,
+    agency:{name:f.aname.value.trim(),contact:f.acontact.value.trim(),phone:f.aphone.value.trim(),email:f.aemail.value.trim()},
+    assignee:f.assignee.value,noticeDate:f.noticeDate.value,noticeDays:nd>0?nd:30,handoverDate:f.handoverDate.value,
+    handoverManual:manual&&!!f.handoverDate.value,keyNote:f.keyNote.value.trim(),updatedAt:now};
+  const btn=$('#fSave');btn.disabled=true;err.textContent='';busy++;
+  try{
+    if(editId){const t=await api('PATCH','takeovers/'+encodeURIComponent(editId),data);raw[t.id]=t;rebuild();render();$('#dForm').close();toast('Takeover updated')}
+    else{const t=await api('POST','takeovers',data);raw[t.id]=t;rebuild();render();$('#dForm').close();toast('Takeover added');openDetail(t.id)}
+  }catch(x){err.textContent=x.code==='unauth'?'':errText(x)}finally{btn.disabled=false;busy--}
+});
+$('#tf').addEventListener('submit',e=>{e.preventDefault();const m=draftTeam.slice();team=m.slice();renderTeam();$('#dTeam').close();write(async()=>{const r=await api('PUT','team',{members:m});team=Array.isArray(r.members)?r.members:m;renderTeam();toast('Team saved')})});
+function addTeamName(){const i=$('#tNew'),v=i.value.trim();if(v&&!draftTeam.includes(v)){draftTeam.push(v);drawTeam()}i.value='';i.focus()}
+$('#tAdd').addEventListener('click',addTeamName);
+$('#tNew').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addTeamName()}});
+$('#mf').addEventListener('submit',e=>{e.preventDefault();const v=$('#meDlgSel').value;if(!v)return;setMe(v);const p=pending;pending=null;$('#dMe').close();if(p)toggleStep(p.id,p.k,p.checked)});
+$('#dMe').addEventListener('close',()=>{pending=null;if(openId)renderDetail()});
+$('#dDetail').addEventListener('close',()=>{openId=null});
+$('#dDetail').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
+$('#meSel').addEventListener('change',e=>setMe(e.target.value));
+$('#q').addEventListener('input',e=>{q=e.target.value;renderList()});
+$('#btnNew').addEventListener('click',()=>openForm(null));
+$('#btnTeam').addEventListener('click',()=>{draftTeam=team.slice();drawTeam();$('#dTeam').showModal()});
+$('#dEdit').addEventListener('click',()=>{const r=rows.find(x=>x.id===openId);if(r)openForm(r)});
+$('#addOwner').addEventListener('click',()=>{$('#owners').insertAdjacentHTML('beforeend',ownerRow());const all=document.querySelectorAll('#owners [data-o=name]');all[all.length-1].focus()});
+const ff=F();
+ff.noticeDate.addEventListener('input',autoHandover);ff.noticeDays.addEventListener('input',autoHandover);
+ff.handoverDate.addEventListener('input',()=>{manual=true;syncManual()});
+$('#useAuto').addEventListener('click',()=>{manual=false;autoHandover();syncManual()});
+let armT;
+$('#dDel').addEventListener('click',e=>{
+  const b=e.currentTarget;
+  if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='Tap again to delete';clearTimeout(armT);armT=setTimeout(()=>{b.classList.remove('arm');b.textContent='Delete takeover'},4000);return}
+  clearTimeout(armT);b.classList.remove('arm');b.textContent='Delete takeover';
+  const id=openId;$('#dDetail').close();
+  delete raw[id];rebuild();render();
+  write(async()=>{await api('DELETE','takeovers/'+encodeURIComponent(id));toast('Takeover deleted')});
+});
+document.addEventListener('click',e=>{
+  const o=e.target.closest('[data-open]');if(o){openDetail(o.dataset.open);return}
+  const fb=e.target.closest('[data-f]');if(fb){filter=fb.dataset.f;renderList();return}
+  if(e.target.closest('[data-new]')){openForm(null);return}
+  const c=e.target.closest('[data-close]');if(c){c.closest('dialog').close();return}
+  const ro=e.target.closest('[data-rm-owner]');if(ro){ro.closest('.orow').remove();return}
+  const rt=e.target.closest('[data-rm-team]');if(rt){draftTeam.splice(+rt.dataset.rmTeam,1);drawTeam()}
+});
+document.addEventListener('keydown',e=>{const c=e.target.closest&&e.target.closest('article[data-open]');if(c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openDetail(c.dataset.open)}});
+document.addEventListener('change',e=>{const s=e.target.dataset&&e.target.dataset.step;if(s&&openId)toggleStep(openId,s,e.target.checked)});
+
+$('#dCode').addEventListener('cancel',e=>e.preventDefault());
+$('#cf').addEventListener('submit',async e=>{
+  e.preventDefault();const v=$('#codeIn').value.trim();if(!v)return;
+  const prev=code,btn=$('#cBtn');code=v;btn.disabled=true;$('#cerr').textContent='';
+  try{const s=await api('GET','state');try{localStorage.setItem('mpg-code',v)}catch(x){}$('#dCode').close();applyState(s);state='ready';note('');render();startPolling()}
+  catch(x){if(x.code==='unauth')code=prev;else $('#cerr').textContent=x.code==='nofn'?'The board database is not switched on for this site yet.':"Can't reach the board. Check your connection."}
+  finally{btn.disabled=false}
+});
+$('#lockBtn').addEventListener('click',()=>{code='';try{localStorage.removeItem('mpg-code')}catch(e){}clearInterval(polling);raw={};rebuild();state='loading';render();askCode()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&code)load()});
+renderTeam();render();
+setInterval(render,30*60*1000);
+if(code)startPolling();else askCode();
+}
+</script>
+</body>
+</html>

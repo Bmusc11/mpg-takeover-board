@@ -1,0 +1,182 @@
+// MPG Takeover Board API core. Storage is passed in so it can be tested without Netlify.
+import { createHash, timingSafeEqual, randomUUID } from 'node:crypto';
+
+const DEFAULT_REMINDER_HASH = '6e1b98f738250191539adec13c1eb1e63be3e5a2d77db2a081955bb8ed57ea82';
+const DEFAULT_TEAM = ['Brenden', 'Brittney', 'Brian'];
+const STEP_KEYS = ['form6', 'termination', 'ownerLetter', 'form6Copy', 'portal', 'keys'];
+const STEP_NAMES = {
+  form6: 'Form 6 signed by the landlords',
+  termination: 'Termination email sent from PropertyMe',
+  ownerLetter: 'Change of management letter sent to owner',
+  form6Copy: 'Copy of Form 6 sent to owner',
+  portal: 'Owner portal set up and access sent',
+  keys: 'Keys and files received from outgoing agent',
+};
+const ID_RE = /^[a-f0-9-]{36}$/;
+
+const sha = (s) => createHash('sha256').update(String(s)).digest('hex');
+const same = (a, b) => { const x = Buffer.from(a), y = Buffer.from(b); return x.length === y.length && timingSafeEqual(x, y); };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const S = (v, n = 300) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+const D = (v) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '');
+const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
+const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+const text = (body, status = 200) => new Response(body, { status, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' } });
+
+export const brisToday = (now = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Brisbane', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+const utc = (s) => { const p = s.split('-').map(Number); return Date.UTC(p[0], p[1] - 1, p[2]); };
+const daysBetween = (from, to) => Math.round((utc(to) - utc(from)) / 864e5);
+const longDate = (s) => new Date(utc(s)).toLocaleDateString('en-AU', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+// Builds the stored fields from a request body. Only keys present in the body are returned.
+function cleanPatch(b) {
+  const out = {};
+  if (!isObj(b)) return out;
+  for (const k of ['street', 'suburb', 'keyNote', 'assignee']) if (k in b) out[k] = S(b[k], k === 'keyNote' ? 200 : 160);
+  if ('postcode' in b) out.postcode = S(b.postcode, 10);
+  if ('noticeDate' in b) out.noticeDate = D(b.noticeDate);
+  if ('handoverDate' in b) out.handoverDate = D(b.handoverDate);
+  if ('noticeDays' in b) { const n = parseInt(b.noticeDays, 10); out.noticeDays = n > 0 && n <= 365 ? n : 30; }
+  if ('handoverManual' in b) out.handoverManual = !!b.handoverManual;
+  if ('owners' in b && Array.isArray(b.owners)) out.owners = b.owners.slice(0, 10).filter(isObj).map((o) => ({ name: S(o.name, 120), phone: S(o.phone, 40), email: S(o.email, 160) }));
+  if ('agency' in b && isObj(b.agency)) { out.agency = {}; for (const k of ['name', 'contact', 'phone', 'email']) if (k in b.agency) out.agency[k] = S(b.agency[k], 160); }
+  if ('steps' in b && isObj(b.steps)) {
+    out.steps = {};
+    for (const k of STEP_KEYS) if (isObj(b.steps[k])) {
+      const done = !!b.steps[k].done;
+      out.steps[k] = done ? { done: true, by: S(b.steps[k].by, 60), at: new Date().toISOString() } : { done: false, by: '', at: '' };
+    }
+  }
+  return out;
+}
+function merge(a, b) {
+  for (const k of Object.keys(b)) {
+    if (isObj(b[k]) && isObj(a[k])) merge(a[k], b[k]); else a[k] = b[k];
+  }
+  return a;
+}
+function finalise(t, prevHandover) {
+  const now = new Date().toISOString();
+  t.steps = t.steps || {};
+  for (const k of STEP_KEYS) if (!isObj(t.steps[k])) t.steps[k] = { done: false, by: '', at: '' };
+  const all = STEP_KEYS.every((k) => t.steps[k].done);
+  t.completedAt = all ? (t.completedAt || now) : '';
+  if (prevHandover !== undefined && prevHandover !== t.handoverDate) t.reminders = { d7: '', d1: '', for: '' };
+  if (!isObj(t.reminders)) t.reminders = { d7: '', d1: '', for: '' };
+  t.updatedAt = now;
+  return t;
+}
+
+async function loadAll(store) {
+  const { blobs } = await store.list();
+  const items = await Promise.all(blobs.map(async (b) => { const v = await store.get(b.key, { type: 'json' }); return v ? { ...v, id: b.key } : null; }));
+  return items.filter(Boolean);
+}
+
+function codeOk(req, env) {
+  const given = req.headers.get('x-team-code') || '';
+  if (!given) return false;
+  const team = env('TEAM_CODE');
+  if (!team) return false; // fail closed until TEAM_CODE is set in Netlify
+  return same(sha(given), sha(team));
+}
+
+async function reminders(url, stores, env, now) {
+  const key = url.searchParams.get('key') || '';
+  const want = env('REMINDER_KEY') ? sha(env('REMINDER_KEY')) : DEFAULT_REMINDER_HASH;
+  if (!key || !same(sha(key), want)) { await sleep(500); return text('Forbidden', 403); }
+  const today = brisToday(now);
+  const ack = url.searchParams.get('ack');
+  if (ack) {
+    let n = 0;
+    for (const part of ack.split(',').slice(0, 50)) {
+      const [id, kind] = part.split(':');
+      if (!ID_RE.test(id || '') || !['d7', 'd1'].includes(kind)) continue;
+      const t = await stores.takeovers.get(id, { type: 'json' });
+      if (!t || !D(t.handoverDate)) continue;
+      const r = isObj(t.reminders) && t.reminders.for === t.handoverDate ? { ...t.reminders } : { d7: '', d1: '' };
+      r[kind] = today;
+      if (kind === 'd1' && !r.d7) r.d7 = today;
+      r.for = t.handoverDate;
+      t.reminders = r;
+      await stores.takeovers.setJSON(id, t);
+      n++;
+    }
+    return text(`OK acknowledged ${n}`);
+  }
+  const due = [];
+  for (const t of await loadAll(stores.takeovers)) {
+    if (t.steps?.keys?.done || !D(t.handoverDate)) continue;
+    const days = daysBetween(today, t.handoverDate);
+    const r = isObj(t.reminders) && t.reminders.for === t.handoverDate ? t.reminders : {};
+    let kind = null;
+    if (days >= 0 && days <= 1 && !r.d1) kind = 'd1';
+    else if (days >= 2 && days <= 7 && !r.d7) kind = 'd7';
+    if (kind) due.push({ t, kind, days });
+  }
+  const lines = [`MPG key collection reminders for ${today} (Brisbane)`, `DUE: ${due.length}`];
+  for (const { t, kind, days } of due) {
+    const a = t.agency || {};
+    lines.push('---',
+      `id: ${t.id}`, `kind: ${kind}`, `days_until: ${days}`,
+      `address: ${[t.street, t.suburb, t.postcode].filter(Boolean).join(', ')}`,
+      `key_collection_date: ${longDate(t.handoverDate)}`,
+      `time_and_place: ${t.keyNote || 'not set'}`,
+      `outgoing_agency: ${[a.name, a.contact, a.phone].filter(Boolean).join(' | ') || 'not set'}`,
+      `owners: ${(t.owners || []).map((o) => o.name).filter(Boolean).join(' & ') || 'not set'}`,
+      `assigned: ${t.assignee || 'unassigned'}`,
+      `outstanding_steps: ${STEP_KEYS.filter((k) => !t.steps?.[k]?.done).map((k) => STEP_NAMES[k]).join('; ') || 'none'}`);
+  }
+  lines.push('---', 'END');
+  return text(lines.join('\n'));
+}
+
+export async function handle(req, stores, env = () => '', now = new Date()) {
+  const url = new URL(req.url);
+  const parts = url.pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
+  const m = req.method;
+  try {
+    if (parts[0] === 'health') return json({ ok: true });
+    if (parts[0] === 'reminders' && m === 'GET') return await reminders(url, stores, env, now);
+    if (!codeOk(req, env)) { await sleep(500); return json({ error: 'Wrong team code' }, 401); }
+    let body = null;
+    if (m === 'POST' || m === 'PATCH' || m === 'PUT') {
+      if (Number(req.headers.get('content-length') || 0) > 100000) return json({ error: 'Too large' }, 413);
+      try { body = await req.json(); } catch { return json({ error: 'Bad JSON' }, 400); }
+    }
+    if (parts[0] === 'state' && m === 'GET') {
+      const t = await stores.settings.get('team', { type: 'json' });
+      return json({ takeovers: await loadAll(stores.takeovers), team: Array.isArray(t?.members) ? t.members : DEFAULT_TEAM, today: brisToday(now) });
+    }
+    if (parts[0] === 'takeovers') {
+      const id = parts[1];
+      if (!id && m === 'POST') {
+        const nid = randomUUID();
+        const t = finalise(merge({ street: '', suburb: '', postcode: '', owners: [], agency: { name: '', contact: '', phone: '', email: '' }, assignee: '', noticeDate: '', noticeDays: 30, handoverDate: '', handoverManual: false, keyNote: '', createdAt: new Date().toISOString() }, cleanPatch(body)));
+        if (!t.street) return json({ error: 'Street address is required' }, 400);
+        await stores.takeovers.setJSON(nid, t);
+        return json({ ...t, id: nid }, 201);
+      }
+      if (id && ID_RE.test(id)) {
+        const cur = await stores.takeovers.get(id, { type: 'json' });
+        if (!cur) return json({ error: 'Not found' }, 404);
+        if (m === 'PATCH') {
+          const prev = cur.handoverDate;
+          const t = finalise(merge(cur, cleanPatch(body)), prev);
+          await stores.takeovers.setJSON(id, t);
+          return json({ ...t, id });
+        }
+        if (m === 'DELETE') { await stores.takeovers.delete(id); return json({ ok: true }); }
+      }
+    }
+    if (parts[0] === 'team' && m === 'PUT') {
+      const members = Array.isArray(body?.members) ? [...new Set(body.members.map((x) => S(x, 60)).filter(Boolean))].slice(0, 30) : [];
+      await stores.settings.setJSON('team', { members });
+      return json({ members });
+    }
+    return json({ error: 'Not found' }, 404);
+  } catch (e) {
+    console.error(e);
+    return json({ error: 'Server error' }, 500);
+  }
+}
