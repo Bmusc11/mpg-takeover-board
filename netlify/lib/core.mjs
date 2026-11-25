@@ -73,6 +73,71 @@ async function loadAll(store) {
   return items.filter(Boolean);
 }
 
+// Address lookup: Google Places API (New), called from the server so the key never reaches the browser.
+const PLACES = 'https://places.googleapis.com/v1/';
+const TOKEN_RE = /^[A-Za-z0-9-]{8,64}$/;
+const PLACE_RE = /^[A-Za-z0-9_-]{10,300}$/;
+const UNIT_RE = /^(unit|apartment|apt|flat|suite|villa|townhouse)\s*/i;
+// Centre of the Logan to Gold Coast area, used only to rank nearby addresses first.
+const BIAS = { circle: { center: { latitude: -27.8, longitude: 153.1 }, radius: 50000 } };
+
+export function addressFrom(d) {
+  const comps = Array.isArray(d?.addressComponents) ? d.addressComponents : [];
+  const get = (type, short) => {
+    const c = comps.find((x) => isObj(x) && Array.isArray(x.types) && x.types.includes(type));
+    return c ? S(short ? c.shortText : c.longText, 120) : '';
+  };
+  const num = get('street_number'), route = get('route'), sub = get('subpremise');
+  let street = [num, route].filter(Boolean).join(' ');
+  if (sub && street) {
+    const unit = sub.replace(UNIT_RE, '');
+    street = /^[A-Za-z0-9-]+$/.test(unit) && num ? `${unit}/${street}` : `${sub}, ${street}`;
+  }
+  return {
+    street,
+    suburb: get('locality') || get('sublocality_level_1') || get('sublocality'),
+    postcode: get('postal_code').slice(0, 4),
+    state: get('administrative_area_level_1', true),
+    formatted: S(d?.formattedAddress, 240),
+  };
+}
+
+async function places(parts, url, env, fetchFn) {
+  const key = env('GOOGLE_MAPS_API_KEY');
+  if (!key) return json({ error: 'Address lookup is not set up' }, 503);
+  const s = url.searchParams.get('s') || '';
+  const sessionToken = TOKEN_RE.test(s) ? s : '';
+  if (parts[1] === 'suggest') {
+    const input = S(url.searchParams.get('q'), 120);
+    if (input.length < 3) return json({ suggestions: [] });
+    const base = { input, includedRegionCodes: ['au'], regionCode: 'au', languageCode: 'en-AU', locationBias: BIAS };
+    if (sessionToken) base.sessionToken = sessionToken;
+    const call = (body) => fetchFn(PLACES + 'places:autocomplete', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'suggestions.placePrediction.placeId,suggestions.placePrediction.text,suggestions.placePrediction.structuredFormat' },
+      body: JSON.stringify(body),
+    });
+    let r = await call({ ...base, includedPrimaryTypes: ['street_address', 'premise', 'subpremise', 'route'] });
+    if (r.status === 400) r = await call(base); // fall back to all place types if Google rejects the type filter
+    if (!r.ok) { console.error('places suggest', r.status, await r.text().catch(() => '')); return json({ error: 'Address lookup failed' }, 502); }
+    const d = await r.json().catch(() => ({}));
+    const suggestions = (Array.isArray(d.suggestions) ? d.suggestions : [])
+      .map((x) => x && x.placePrediction).filter((p) => p && typeof p.placeId === 'string' && PLACE_RE.test(p.placeId)).slice(0, 6)
+      .map((p) => ({ id: p.placeId, main: S(p.structuredFormat?.mainText?.text || p.text?.text, 200), secondary: S(p.structuredFormat?.secondaryText?.text, 200) }));
+    return json({ suggestions });
+  }
+  if (parts[1] === 'detail') {
+    const id = url.searchParams.get('id') || '';
+    if (!PLACE_RE.test(id)) return json({ error: 'Bad address id' }, 400);
+    const q = new URLSearchParams({ languageCode: 'en-AU', regionCode: 'au' });
+    if (sessionToken) q.set('sessionToken', sessionToken);
+    const r = await fetchFn(PLACES + 'places/' + encodeURIComponent(id) + '?' + q, { headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'addressComponents,formattedAddress' } });
+    if (!r.ok) { console.error('places detail', r.status, await r.text().catch(() => '')); return json({ error: 'Address lookup failed' }, 502); }
+    return json(addressFrom(await r.json().catch(() => ({}))));
+  }
+  return json({ error: 'Not found' }, 404);
+}
+
 function codeOk(req, env) {
   const given = req.headers.get('x-team-code') || '';
   if (!given) return false;
@@ -131,7 +196,7 @@ async function reminders(url, stores, env, now) {
   return text(lines.join('\n'));
 }
 
-export async function handle(req, stores, env = () => '', now = new Date()) {
+export async function handle(req, stores, env = () => '', now = new Date(), fetchFn = (...a) => globalThis.fetch(...a)) {
   const url = new URL(req.url);
   const parts = url.pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
   const m = req.method;
@@ -139,6 +204,7 @@ export async function handle(req, stores, env = () => '', now = new Date()) {
     if (parts[0] === 'health') return json({ ok: true });
     if (parts[0] === 'reminders' && m === 'GET') return await reminders(url, stores, env, now);
     if (!codeOk(req, env)) { await sleep(500); return json({ error: 'Wrong team code' }, 401); }
+    if (parts[0] === 'places' && m === 'GET') return await places(parts, url, env, fetchFn);
     let body = null;
     if (m === 'POST' || m === 'PATCH' || m === 'PUT') {
       if (Number(req.headers.get('content-length') || 0) > 100000) return json({ error: 'Too large' }, 413);

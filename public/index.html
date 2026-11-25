@@ -149,6 +149,14 @@ label>span{font-size:13px;color:var(--mute)}
 .hint{font-size:13px;color:var(--mute);grid-column:1/-1;display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:-4px 0 0}
 .linkbtn{border:0;background:none;color:var(--teal);font:500 14px Poppins,sans-serif;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:36px;padding:0}
 .ferr{color:var(--red);font-size:14px;min-height:1.2em;margin:0}
+.ac{position:relative}.ac label{display:grid;gap:4px}
+.acl{position:absolute;left:0;right:0;top:100%;z-index:5;margin:4px 0 0;padding:4px 0;list-style:none;background:var(--paper);border:1px solid var(--line2);border-radius:6px;box-shadow:0 12px 30px rgba(0,0,0,.18);max-height:330px;overflow:auto}
+.acl [role=option]{padding:9px 14px;cursor:pointer;line-height:1.35}
+.acl [role=option] b{display:block;font-weight:500}
+.acl [role=option] small{font-size:13px;color:var(--mute)}
+.acl [aria-selected=true]{background:var(--teal-soft)}
+.acl .acmsg{padding:10px 14px;font-size:14px;color:var(--mute)}
+.acl .acby{padding:6px 14px 3px;font:400 13px/1.2 Roboto,Arial,sans-serif;color:var(--mute);text-align:right;border-top:1px solid var(--line);margin-top:4px}
 #teamList{list-style:none;margin:0 0 12px;padding:0}
 #teamList li{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);min-height:48px}
 .addrow{display:flex;gap:8px}
@@ -219,7 +227,7 @@ label>span{font-size:13px;color:var(--mute)}
   <div class="dh"><div><h2 id="fTitle">New takeover</h2><p>Fields marked * are required.</p></div><button type="button" class="xbtn" data-close>Close</button></div>
   <div class="db">
     <fieldset><legend>Property</legend><div class="fg">
-      <label class="w6"><span>Street address *</span><input name="street" autocomplete="off"></label>
+      <div class="w6 ac"><label><span>Street address *</span><input name="street" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="acList" placeholder="Start typing, then pick the address"></label><ul class="acl" id="acList" role="listbox" aria-label="Address suggestions" hidden></ul></div>
       <label class="w4"><span>Suburb</span><input name="suburb" autocomplete="off"></label>
       <label class="w2"><span>Postcode</span><input name="postcode" inputmode="numeric" maxlength="4" autocomplete="off"></label>
     </div></fieldset>
@@ -483,6 +491,7 @@ function openForm(r){
   editId=r?r.id:null;const f=F();$('#f').reset();$('#ferr').textContent='';
   $('#fTitle').textContent=r?'Edit takeover':'New takeover';
   f.street.value=r?r.street:'';f.suburb.value=r?r.suburb:'';f.postcode.value=r?r.postcode:'';
+  acTok='';acPicked=f.street.value.trim();acClose();
   $('#owners').innerHTML=(r&&r.owners.length?r.owners:[{}]).map(ownerRow).join('');
   f.aname.value=r?r.agency.name:'';f.acontact.value=r?r.agency.contact:'';f.aphone.value=r?r.agency.phone:'';f.aemail.value=r?r.agency.email:'';
   teamOpts(f.assignee,r?r.assignee:me,'Unassigned');
@@ -526,6 +535,69 @@ const ff=F();
 ff.noticeDate.addEventListener('input',autoHandover);ff.noticeDays.addEventListener('input',autoHandover);
 ff.handoverDate.addEventListener('input',()=>{manual=true;syncManual()});
 $('#useAuto').addEventListener('click',()=>{manual=false;autoHandover();syncManual()});
+
+// Address suggestions from Google, fetched through /api/places so the key stays on the server.
+const acL=$('#acList');
+let acItems=[],acIdx=-1,acT=0,acSeq=0,acTok='',acPicked='',acOff=false;
+const newTok=()=>{try{return crypto.randomUUID()}catch(e){return Date.now().toString(16)+Math.random().toString(16).slice(2)}};
+function acClose(){clearTimeout(acT);acSeq++;acItems=[];acIdx=-1;acL.hidden=true;acL.innerHTML='';ff.street.setAttribute('aria-expanded','false');ff.street.removeAttribute('aria-activedescendant')}
+function acDraw(msg){
+  acL.innerHTML=(msg?`<li class="acmsg">${esc(msg)}</li>`:acItems.map((s,i)=>`<li role="option" id="ac${i}" data-ac="${i}" aria-selected="${i===acIdx}"><b>${esc(s.main)}</b><small>${esc(s.secondary)}</small></li>`).join(''))+'<li class="acby" aria-hidden="true">Google Maps</li>';
+  acL.hidden=false;ff.street.setAttribute('aria-expanded','true');
+  if(acIdx>=0){ff.street.setAttribute('aria-activedescendant','ac'+acIdx);const el=$('#ac'+acIdx);if(el)el.scrollIntoView({block:'nearest'})}else ff.street.removeAttribute('aria-activedescendant');
+}
+async function acGet(path){
+  const r=await fetch('/api/places/'+path,{cache:'no-store',headers:{'x-team-code':code}});
+  let d=null;try{d=await r.json()}catch(e){}
+  return {status:r.status,ok:r.ok,d:obj(d)};
+}
+function acQuery(){
+  clearTimeout(acT);const v=ff.street.value.trim(),seq=++acSeq;
+  if(acOff||!code||v.length<3||v===acPicked){acItems=[];acIdx=-1;acL.hidden=true;acL.innerHTML='';ff.street.setAttribute('aria-expanded','false');return}
+  acT=setTimeout(async()=>{
+    if(!acTok)acTok=newTok();
+    try{
+      const r=await acGet('suggest?q='+encodeURIComponent(v)+'&s='+encodeURIComponent(acTok));
+      if(seq!==acSeq||document.activeElement!==ff.street)return;
+      if(r.status===503){acOff=true;acClose();return}
+      if(r.status===401){acClose();return}
+      if(!r.ok)throw 0;
+      acItems=(Array.isArray(r.d.suggestions)?r.d.suggestions:[]).map(obj).filter(s=>typeof s.id==='string'&&s.id).map(s=>({id:s.id,main:str(s.main),secondary:str(s.secondary)}));
+      acIdx=-1;acDraw(acItems.length?'':'No matching address yet. Keep typing, or enter it by hand.');
+    }catch(e){if(seq===acSeq&&document.activeElement===ff.street)acDraw("Address lookup isn't responding. Enter the address by hand.")}
+  },250);
+}
+async function acPick(i){
+  const s=acItems[i];if(!s)return;
+  const f=F(),tok=acTok;acTok='';acClose();
+  f.street.value=s.main;acPicked=s.main;
+  try{
+    const r=await acGet('detail?id='+encodeURIComponent(s.id)+(tok?'&s='+encodeURIComponent(tok):''));
+    if(!r.ok)throw 0;
+    const ds=str(r.d.street);
+    if(ds&&((ds.includes('/')&&!s.main.includes('/'))||!/\d/.test(s.main)))f.street.value=ds;
+    f.suburb.value=str(r.d.suburb)||f.suburb.value;
+    if(/^\d{4}$/.test(str(r.d.postcode)))f.postcode.value=r.d.postcode;
+  }catch(e){
+    const sub=str(s.secondary).split(',')[0].replace(/\s+(QLD|NSW|VIC|SA|WA|TAS|NT|ACT)$/i,'').trim();
+    if(sub)f.suburb.value=sub;
+  }
+  acPicked=f.street.value.trim();
+  f.street.focus();const n=f.street.value.length;try{f.street.setSelectionRange(n,n)}catch(e){}
+}
+ff.street.addEventListener('input',()=>{acPicked='';acQuery()});
+ff.street.addEventListener('keydown',e=>{
+  if(acL.hidden)return;
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();acClose();return}
+  if(e.key==='Tab'){acClose();return}
+  if(!acItems.length)return;
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();const n=acItems.length;acIdx=e.key==='ArrowDown'?(acIdx+1)%n:(acIdx<=0?n-1:acIdx-1);acDraw()}
+  else if(e.key==='Enter'&&acIdx>=0){e.preventDefault();acPick(acIdx)}
+});
+ff.street.addEventListener('blur',()=>setTimeout(()=>{if(document.activeElement!==ff.street)acClose()},150));
+acL.addEventListener('mousedown',e=>e.preventDefault());
+acL.addEventListener('click',e=>{const li=e.target.closest('[data-ac]');if(li)acPick(+li.dataset.ac)});
+$('#dForm').addEventListener('close',acClose);
 let armT;
 $('#dDel').addEventListener('click',e=>{
   const b=e.currentTarget;
