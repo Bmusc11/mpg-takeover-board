@@ -47,6 +47,9 @@ function cleanPatch(b) {
       out.steps[k] = done ? { done: true, by: S(b.steps[k].by, 60), at: new Date().toISOString() } : { done: false, by: '', at: '' };
     }
   }
+  if ('handover' in b && isObj(b.handover)) {
+    out.handover = b.handover.done ? { done: true, by: S(b.handover.by, 60), at: new Date().toISOString() } : { done: false, by: '', at: '' };
+  }
   return out;
 }
 function merge(a, b) {
@@ -59,8 +62,8 @@ function finalise(t, prevHandover) {
   const now = new Date().toISOString();
   t.steps = t.steps || {};
   for (const k of STEP_KEYS) if (!isObj(t.steps[k])) t.steps[k] = { done: false, by: '', at: '' };
-  const all = STEP_KEYS.every((k) => t.steps[k].done);
-  t.completedAt = all ? (t.completedAt || now) : '';
+  if (!isObj(t.handover)) t.handover = { done: false, by: '', at: '' };
+  t.completedAt = t.handover.done ? (t.handover.at || now) : '';
   if (prevHandover !== undefined && prevHandover !== t.handoverDate) t.reminders = { d7: '', d1: '', for: '' };
   if (!isObj(t.reminders)) t.reminders = { d7: '', d1: '', for: '' };
   t.updatedAt = now;
@@ -171,7 +174,7 @@ async function reminders(url, stores, env, now) {
   }
   const due = [];
   for (const t of await loadAll(stores.takeovers)) {
-    if (t.steps?.keys?.done || !D(t.handoverDate)) continue;
+    if (t.handover?.done || t.steps?.keys?.done || !D(t.handoverDate)) continue;
     const days = daysBetween(today, t.handoverDate);
     const r = isObj(t.reminders) && t.reminders.for === t.handoverDate ? t.reminders : {};
     let kind = null;

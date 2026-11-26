@@ -96,11 +96,19 @@ h1{font:400 clamp(34px,5vw,50px)/1.05 Italiana,Georgia,serif;margin:0;text-wrap:
 .cnt span{font-size:13px;line-height:1.35}
 .st-soon .cnt{background:var(--amber-soft);color:var(--amber)}
 .st-overdue .cnt{background:var(--red-soft);color:var(--red)}
-.st-complete .cnt{background:transparent;color:var(--mute);border:1px solid var(--line)}
+.st-taken .cnt{background:transparent;color:var(--teal);border:1px solid var(--line)}
+.st-taken .cnt b{font-size:22px;line-height:1.2;white-space:nowrap}
+.tabs button{min-height:44px;padding:0 18px;font-size:15px}
+.hbtn{margin-left:auto;font:500 14px Poppins,sans-serif;min-height:40px;padding:0 14px;border-radius:20px;border:1px solid var(--teal);background:transparent;color:var(--teal);cursor:pointer;white-space:nowrap}
+.hbtn:hover{background:var(--teal-soft)}
+.hbtn.arm,.btn.arm{background:var(--amber);border-color:var(--amber);color:var(--on-amber)}
+.hand{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;padding:14px;margin:0 0 22px}
+.hand b{display:block;font-weight:600}.hand small{font-size:13px;color:var(--mute)}
+.hand.on{background:var(--teal-soft);border-color:transparent}.hand.on small{color:var(--teal)}
 .track{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .track span{font-size:13px;padding:3px 10px;border-radius:12px;border:1px solid var(--line2);color:var(--mute)}
 .track span.on{background:var(--teal);border-color:var(--teal);color:var(--on-teal)}
-.track em{font-style:normal;font-size:13px;color:var(--mute);margin-left:auto}
+.track em{font-style:normal;font-size:13px;color:var(--mute)}
 .empty{padding:40px 20px;text-align:center;border:1px dashed var(--line2);border-radius:8px;color:var(--mute)}
 .empty p{margin:0 0 14px}
 .foot{padding:18px 0 40px;color:var(--mute);font-size:13px;border-top:1px solid var(--line);display:flex;gap:8px 20px;flex-wrap:wrap;align-items:center;justify-content:space-between}.foot .linkbtn{font-size:13px}
@@ -169,7 +177,7 @@ label>span{font-size:13px;color:var(--mute)}
 .m1{font-size:34px}.card{grid-template-columns:1fr;padding:16px}
 .cnt{justify-items:start;text-align:left;grid-auto-flow:column;justify-content:start;align-items:baseline;gap:10px}
 .figs{grid-template-columns:repeat(2,minmax(0,1fr))}.fig1:nth-child(3){border-left:0;padding-left:0}
-.track em{margin-left:0;width:100%}.dgrid{grid-template-columns:1fr}
+.hbtn{margin-left:0;width:100%}.dgrid{grid-template-columns:1fr}
 .fg label,.fg .w2,.fg .w4{grid-column:1/-1}.orow{grid-template-columns:1fr;border-bottom:1px solid var(--line);margin-bottom:12px}.orow .x{justify-self:start}
 .me{width:100%}.me select{flex:1}.search{width:100%}}
 </style>
@@ -202,12 +210,9 @@ label>span{font-size:13px;color:var(--mute)}
 
 <section>
   <div class="listhd">
-    <div class="filters" role="group" aria-label="Filter takeovers">
-      <button type="button" data-f="active">Active<i>0</i></button>
-      <button type="button" data-f="soon">Keys in 7 days<i>0</i></button>
-      <button type="button" data-f="overdue">Past handover<i>0</i></button>
-      <button type="button" data-f="complete">Completed<i>0</i></button>
-      <button type="button" data-f="all">All<i>0</i></button>
+    <div class="filters tabs" role="group" aria-label="Takeover lists">
+      <button type="button" data-f="active">Active terminations<i>0</i></button>
+      <button type="button" data-f="taken">Taken over<i>0</i></button>
     </div>
     <input class="search" id="q" type="search" placeholder="Search address, owner, agency" aria-label="Search takeovers">
   </div>
@@ -309,6 +314,7 @@ function norm(id,d){
     handoverDate:isDate(o.handoverDate)?o.handoverDate:'',handoverManual:!!o.handoverManual,keyNote:str(o.keyNote),
     steps:Object.fromEntries(STEPS.map(s=>{const v=obj(st[s.k]);return [s.k,{done:!!v.done,by:str(v.by),at:str(v.at)}]})),
     reminders:{d7:isDate(rm.d7)?rm.d7:'',d1:isDate(rm.d1)?rm.d1:'',for:isDate(rm.for)?rm.for:''},
+    handover:(h=>({done:!!h.done,by:str(h.by),at:str(h.at)}))(obj(o.handover)),
     createdAt:str(o.createdAt),completedAt:str(o.completedAt)};
 }
 
@@ -331,10 +337,11 @@ let me='';try{me=localStorage.getItem('mpg-me')||''}catch(e){}
 
 const ownerNames=r=>r.owners.map(o=>o.name).filter(Boolean).join(' & ');
 const nDone=r=>STEPS.filter(s=>r.steps[s.k].done).length;
-function status(r){if(nDone(r)===6)return 'complete';const d=daysTo(r.handoverDate);if(d===null)return 'active';if(d<0)return 'overdue';if(d<=7)return 'soon';return 'active'}
+const taken=r=>r.handover.done;
+function status(r){if(taken(r))return 'taken';const d=daysTo(r.handoverDate);if(d===null)return 'active';if(d<0)return 'overdue';if(d<=7)return 'soon';return 'active'}
 const byDate=(a,b)=>{const x=a.handoverDate||'9999',y=b.handoverDate||'9999';return x<y?-1:x>y?1:0};
 function countdown(r){
-  if(status(r)==='complete')return {big:'Done',small:'All 6 steps complete'};
+  if(taken(r))return {big:'Taken over',small:'Handover confirmed'+(r.handover.at?' '+stamp(r.handover.at).split(',')[0]:'')+(r.handover.by?' by '+r.handover.by:'')};
   const d=daysTo(r.handoverDate);
   if(d===null)return {big:'No date',small:'Handover date not set'};
   if(d<0)return {big:String(-d),small:(d===-1?'day':'days')+' past handover, '+fmt(r.handoverDate)};
@@ -342,6 +349,7 @@ function countdown(r){
   return {big:String(d),small:(d===1?'day':'days')+' to key collection, '+fmt(r.handoverDate)};
 }
 function remLine(r){
+  if(taken(r))return 'Not needed, handover confirmed';
   if(r.steps.keys.done)return 'Not needed, keys received';
   if(!r.handoverDate)return 'Set a handover date to schedule them';
   const ok=r.reminders.for===r.handoverDate,s7=ok&&r.reminders.d7,s1=ok&&r.reminders.d1;
@@ -382,9 +390,9 @@ function askCode(msg){const d=$('#dCode');$('#cerr').textContent=msg||'';$('#cod
 function render(){renderFigs();renderStrip();renderList();if(openId)renderDetail()}
 
 function renderFigs(){
-  const act=rows.filter(r=>status(r)!=='complete');
+  const act=rows.filter(r=>!taken(r));
   const soon=act.filter(r=>status(r)==='soon').length,over=act.filter(r=>status(r)==='overdue').length;
-  $('#figs').innerHTML=[[act.length,'Active takeovers',''],[soon,'Keys due in 7 days',soon?'warn':''],[over,'Past handover date',over?'bad':''],[rows.length-act.length,'Completed','']]
+  $('#figs').innerHTML=[[act.length,'Active terminations',''],[soon,'Keys due in 7 days',soon?'warn':''],[over,'Past handover date',over?'bad':''],[rows.length-act.length,'Taken over','']]
     .map(([n,l,c])=>`<div class="fig1 ${c}"><b>${n}</b><span>${l}</span></div>`).join('');
   const next=act.filter(r=>{const d=daysTo(r.handoverDate);return d!==null&&d>=0}).sort(byDate)[0];
   $('#lede').innerHTML=state==='nodb'?'The board database is not switched on for this site yet.'
@@ -394,7 +402,7 @@ function renderFigs(){
 }
 
 function renderStrip(){
-  const t=today(),act=rows.filter(r=>status(r)!=='complete'&&r.handoverDate);
+  const t=today(),act=rows.filter(r=>!taken(r)&&r.handoverDate);
   const over=act.filter(r=>daysTo(r.handoverDate)<0).sort(byDate);
   const up=act.filter(r=>{const d=daysTo(r.handoverDate);return d>=0&&d<SPAN}).sort(byDate);
   const later=act.filter(r=>daysTo(r.handoverDate)>=SPAN).length;
@@ -418,25 +426,29 @@ function card(r){
   <div><div class="addr">${esc(r.street||'Property')}</div><div class="sub">${esc([r.suburb,r.postcode].filter(Boolean).join(' '))}</div>
   <dl class="meta"><div><dt>Owner${r.owners.length>1?'s':''}</dt><dd>${esc(ownerNames(r)||'Not entered')}</dd></div><div><dt>Taking over from</dt><dd>${esc(r.agency.name||'Not entered')}</dd></div><div><dt>Assigned</dt><dd>${esc(r.assignee||'Unassigned')}</dd></div></dl></div>
   <div class="cnt"><b>${esc(c.big)}</b><span>${esc(c.small)}</span></div>
-  <div class="track">${STEPS.map(s=>`<span class="${r.steps[s.k].done?'on':''}">${esc(s.s)}</span>`).join('')}<em>${n} of 6 done</em></div></article>`;
+  <div class="track">${STEPS.map(s=>`<span class="${r.steps[s.k].done?'on':''}">${esc(s.s)}</span>`).join('')}<em>${n} of 6 done</em>${!taken(r)&&canWrite?confirmBtn(r,'hbtn'):''}</div></article>`;
+}
+let armedId=null,armedUntil=0;
+function confirmBtn(r,cls){
+  const open=6-nDone(r),armed=armedId===r.id&&Date.now()<armedUntil;
+  return `<button type="button" class="${cls}${armed?' arm':''}" data-confirm="${esc(r.id)}">${armed?esc('Tap again: '+open+' step'+(open>1?'s':'')+' still open'):'Handover confirmed'}</button>`;
 }
 function visible(){
   const ql=q.trim().toLowerCase();
-  return rows.filter(r=>{const s=status(r);
-    if(filter==='active'&&s==='complete')return false;
-    if((filter==='soon'||filter==='overdue'||filter==='complete')&&s!==filter)return false;
+  return rows.filter(r=>{
+    if((filter==='taken')!==taken(r))return false;
     return !ql||[r.street,r.suburb,r.postcode,ownerNames(r),r.agency.name,r.agency.contact,r.assignee].join(' ').toLowerCase().includes(ql)})
-  .sort((a,b)=>filter==='complete'?(b.completedAt>a.completedAt?1:b.completedAt<a.completedAt?-1:0):byDate(a,b));
+  .sort((a,b)=>filter==='taken'?(b.handover.at>a.handover.at?1:b.handover.at<a.handover.at?-1:0):byDate(a,b));
 }
 function renderList(){
-  const c={active:0,soon:0,overdue:0,complete:0,all:rows.length};
-  rows.forEach(r=>{const s=status(r);if(s!=='complete')c.active++;if(s in c&&s!=='active')c[s]++});
+  const c={active:0,taken:0};
+  rows.forEach(r=>{c[taken(r)?'taken':'active']++});
   document.querySelectorAll('[data-f]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.f===filter));b.querySelector('i').textContent=c[b.dataset.f]});
   const v=visible();
   $('#cards').innerHTML=state==='nodb'?'<div class="empty">The board database is not switched on for this site yet. Ask Brenden to check the Netlify deploy.</div>'
     :state==='loading'&&!rows.length?'<div class="empty">Loading takeovers...</div>'
     :v.length?v.map(card).join('')
-    :rows.length?'<div class="empty">Nothing matches this view.</div>'
+    :rows.length?`<div class="empty">${q.trim()?'Nothing matches that search.':filter==='taken'?'No properties taken over yet. Press Handover confirmed on a property once the handover is done.':'No active terminations.'}</div>`
     :`<div class="empty"><p>No takeovers yet.</p>${canWrite?'<button type="button" class="btn" data-new>Add the first takeover</button>':''}</div>`;
 }
 
@@ -451,6 +463,8 @@ function renderDetail(){
   $('#detailBody').innerHTML=`<div class="dcount st-${st}"><div class="cnt"><b>${esc(c.big)}</b><span>${esc(c.small)}</span></div>${r.keyNote?`<p>Key collection: ${esc(r.keyNote)}</p>`:''}</div>
   <h3>Takeover checklist <span>${n} of 6 done</span></h3>
   <ul class="check">${STEPS.map(s=>{const v=r.steps[s.k];return `<li class="${v.done?'on':''}"><label><input type="checkbox" data-step="${s.k}" ${v.done?'checked':''} ${canWrite?'':'disabled'}><span><b>${esc(s.t)}</b><small>${v.done?esc('Done'+(v.by?' by '+v.by:'')+(stamp(v.at)?', '+stamp(v.at):'')):'Not done yet'}</small></span></label></li>`}).join('')}</ul>
+  ${taken(r)?`<div class="hand on"><div><b>Handover confirmed</b><small>${esc((r.handover.by?'By '+r.handover.by:'Confirmed')+(stamp(r.handover.at)?', '+stamp(r.handover.at):''))}. Sitting in Taken over.</small></div>${canWrite?`<button type="button" class="btn ghost" data-unconfirm="${esc(r.id)}">Move back to Active terminations</button>`:''}</div>`
+    :`<div class="hand"><div><b>Handover</b><small>${n===6?'All checklist steps done. Confirm to move it to Taken over.':esc((6-n)+' checklist step'+(6-n>1?'s':'')+' still open')}</small></div>${canWrite?confirmBtn(r,'btn'):''}</div>`}
   <div class="dgrid">
     <section><h3>Key collection</h3><dl class="kv">${kv('Handover date',r.handoverDate?fmt(r.handoverDate,{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'Not set')}${kv('Based on',r.handoverDate?(r.handoverManual?'Set manually':'Notice date plus '+r.noticeDays+' days'):'')}${kv('Notice sent',r.noticeDate?fmt(r.noticeDate,{day:'numeric',month:'short',year:'numeric'}):'Not yet')}${kv('Time and place',r.keyNote)}${kv('Reminder emails',remLine(r))}</dl></section>
     <section><h3>Owner${r.owners.length>1?'s':''}</h3>${r.owners.length?r.owners.map(o=>`<dl class="kv own">${kv('Name',o.name)}${kv('Phone',o.phone)}${kv('Email',o.email)}</dl>`).join(''):'<p class="mute">No owner details yet.</p>'}</section>
@@ -464,14 +478,26 @@ function openDetail(id){openId=id;renderDetail();const d=$('#dDetail');if(!d.ope
 
 function toggleStep(id,k,checked){
   const r=rows.find(x=>x.id===id);if(!r)return;
-  if(!me){pending={id,k,checked};openMe();return}
+  if(!me){pending=()=>toggleStep(id,k,checked);openMe();return}
   const now=new Date().toISOString(),steps={};
   steps[k]=checked?{done:true,by:me,at:now}:{done:false,by:'',at:''};
   const patch={steps,updatedAt:now};
   if(k==='termination'&&checked&&!r.noticeDate){patch.noticeDate=today();if(!r.handoverManual){patch.handoverDate=addDays(patch.noticeDate,r.noticeDays);patch.reminders={d7:'',d1:'',for:''}}toast('Notice date set to today. Handover worked out automatically.')}
-  const all=STEPS.every(s=>s.k===k?checked:r.steps[s.k].done);
-  patch.completedAt=all?now:'';
   patchTakeover(id,patch);
+}
+function confirmHandover(id){
+  const r=rows.find(x=>x.id===id);if(!r||taken(r))return;
+  if(!me){pending=()=>confirmHandover(id);openMe();return}
+  if(nDone(r)<6&&!(armedId===id&&Date.now()<armedUntil)){armedId=id;armedUntil=Date.now()+4000;render();setTimeout(()=>{if(armedId===id&&Date.now()>=armedUntil){armedId=null;render()}},4100);return}
+  armedId=null;
+  const now=new Date().toISOString();
+  patchTakeover(id,{handover:{done:true,by:me,at:now},completedAt:now});
+  toast((r.street||'Property')+' moved to Taken over');
+}
+function unconfirmHandover(id){
+  const r=rows.find(x=>x.id===id);if(!r||!taken(r))return;
+  patchTakeover(id,{handover:{done:false,by:'',at:''},completedAt:''});
+  toast((r.street||'Property')+' moved back to Active terminations');
 }
 
 function teamOpts(sel,val,ph){
@@ -521,7 +547,7 @@ $('#tf').addEventListener('submit',e=>{e.preventDefault();const m=draftTeam.slic
 function addTeamName(){const i=$('#tNew'),v=i.value.trim();if(v&&!draftTeam.includes(v)){draftTeam.push(v);drawTeam()}i.value='';i.focus()}
 $('#tAdd').addEventListener('click',addTeamName);
 $('#tNew').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addTeamName()}});
-$('#mf').addEventListener('submit',e=>{e.preventDefault();const v=$('#meDlgSel').value;if(!v)return;setMe(v);const p=pending;pending=null;$('#dMe').close();if(p)toggleStep(p.id,p.k,p.checked)});
+$('#mf').addEventListener('submit',e=>{e.preventDefault();const v=$('#meDlgSel').value;if(!v)return;setMe(v);const p=pending;pending=null;$('#dMe').close();if(typeof p==='function')p()});
 $('#dMe').addEventListener('close',()=>{pending=null;if(openId)renderDetail()});
 $('#dDetail').addEventListener('close',()=>{openId=null});
 $('#dDetail').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});
@@ -608,6 +634,8 @@ $('#dDel').addEventListener('click',e=>{
   write(async()=>{await api('DELETE','takeovers/'+encodeURIComponent(id));toast('Takeover deleted')});
 });
 document.addEventListener('click',e=>{
+  const hc=e.target.closest('[data-confirm]');if(hc){confirmHandover(hc.dataset.confirm);return}
+  const hu=e.target.closest('[data-unconfirm]');if(hu){unconfirmHandover(hu.dataset.unconfirm);return}
   const o=e.target.closest('[data-open]');if(o){openDetail(o.dataset.open);return}
   const fb=e.target.closest('[data-f]');if(fb){filter=fb.dataset.f;renderList();return}
   if(e.target.closest('[data-new]')){openForm(null);return}
@@ -615,7 +643,7 @@ document.addEventListener('click',e=>{
   const ro=e.target.closest('[data-rm-owner]');if(ro){ro.closest('.orow').remove();return}
   const rt=e.target.closest('[data-rm-team]');if(rt){draftTeam.splice(+rt.dataset.rmTeam,1);drawTeam()}
 });
-document.addEventListener('keydown',e=>{const c=e.target.closest&&e.target.closest('article[data-open]');if(c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openDetail(c.dataset.open)}});
+document.addEventListener('keydown',e=>{const c=e.target.closest&&!e.target.closest('button')&&e.target.closest('article[data-open]');if(c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();openDetail(c.dataset.open)}});
 document.addEventListener('change',e=>{const s=e.target.dataset&&e.target.dataset.step;if(s&&openId)toggleStep(openId,s,e.target.checked)});
 
 $('#dCode').addEventListener('cancel',e=>e.preventDefault());
